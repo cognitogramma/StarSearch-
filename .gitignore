@@ -5,3 +5,6 @@ node_modules/
 render/
 .DS_Store
 ~$*.pptx
+
+# large downloaded survey files
+data/raw/
