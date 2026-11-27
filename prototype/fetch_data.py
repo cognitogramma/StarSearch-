@@ -15,7 +15,13 @@ Star selection (deterministic, never looks at the light curves' periodograms):
     most points in each bin.  Gaia's frequency is used ONLY for this binning and
     for the final comparison; it is never seen by the fitting code.
 
-Writes  data/stars.csv  and  data/lc_<source_id>.csv  (obs_time, flux, flux_error).
+Second set ("sample40", added for the follow-up run): same catalogue filters and
+>= 45 points, but drawn in pseudo-random order (ORDER BY MOD(source_id, 999983),
+which spreads stars over the sky instead of one source_id/HEALPix patch), taking
+the first 10 per period bin.  The original 4 stars are excluded from it.
+
+Writes  data/stars.csv  (column `set` = original4 | sample40)  and
+data/lc_<source_id>.csv  (obs_time, flux, flux_error).
 """
 from pathlib import Path
 
@@ -29,6 +35,50 @@ DATA = HERE / "data"
 N_CANDIDATES = 400
 MIN_POINTS = 45
 PERIOD_BINS = [(0.5, 1.5), (1.5, 4.0), (4.0, 10.0), (10.0, 20.0)]
+N_SAMPLE_POOL, N_PER_BIN = 1500, 10
+FILTERS = """geom_model_reference_level BETWEEN 10 AND 15
+          AND frequency BETWEEN 0.05 AND 2
+          AND derived_primary_ecl_depth BETWEEN 0.1 AND 1.5"""
+COLS = """source_id, frequency, frequency_error, geom_model_reference_level,
+          derived_primary_ecl_depth, model_type"""
+
+
+def count_points(svc, ids, chunk=300):
+    n_by_id = {}
+    for i in range(0, len(ids), chunk):
+        sub = ",".join(str(s) for s in ids[i:i + chunk])
+        tab = svc.run_sync(f"""
+            SELECT source_id, COUNT(*) AS n FROM gaiadr3_eb.lightcurves
+            WHERE band = 'G' AND flux_error IS NOT NULL AND source_id IN ({sub})
+            GROUP BY source_id""").to_table()
+        n_by_id.update({int(r["source_id"]): int(r["n"]) for r in tab})
+    return n_by_id
+
+
+def star_row(r, n, set_name):
+    return dict(source_id=int(r["source_id"]), set=set_name,
+                gaia_frequency=float(r["frequency"]),
+                gaia_frequency_error=float(r["frequency_error"]),
+                gmag=float(r["geom_model_reference_level"]),
+                primary_depth=float(r["derived_primary_ecl_depth"]),
+                model_type=str(r["model_type"]), n_points=n)
+
+
+def sample40(svc, exclude):
+    pool = svc.run_sync(f"""
+        SELECT TOP {N_SAMPLE_POOL} {COLS}, MOD(source_id, 999983) AS h
+        FROM gaiadr3_eb.vari_eclipsing_binary_lite
+        WHERE {FILTERS} ORDER BY h""").to_table()
+    n_by_id = count_points(svc, [int(s) for s in pool["source_id"]])
+    rows = []
+    for lo, hi in PERIOD_BINS:
+        picked = [r for r in pool
+                  if lo <= 1 / float(r["frequency"]) < hi
+                  and n_by_id.get(int(r["source_id"]), 0) >= MIN_POINTS
+                  and int(r["source_id"]) not in exclude][:N_PER_BIN]
+        print(f"bin {lo}-{hi} d: {len(picked)} stars")
+        rows += [star_row(r, n_by_id[int(r["source_id"])], "sample40") for r in picked]
+    return rows
 
 
 def main():
@@ -36,21 +86,10 @@ def main():
     svc = pyvo.dal.TAPService(TAP_URL)
 
     cand = svc.run_sync(f"""
-        SELECT TOP {N_CANDIDATES} source_id, frequency, frequency_error,
-               geom_model_reference_level, derived_primary_ecl_depth, model_type
+        SELECT TOP {N_CANDIDATES} {COLS}
         FROM gaiadr3_eb.vari_eclipsing_binary_lite
-        WHERE geom_model_reference_level BETWEEN 10 AND 15
-          AND frequency BETWEEN 0.05 AND 2
-          AND derived_primary_ecl_depth BETWEEN 0.1 AND 1.5
-        ORDER BY source_id""").to_table()
-
-    ids = ",".join(str(s) for s in cand["source_id"])
-    counts = svc.run_sync(f"""
-        SELECT source_id, COUNT(*) AS n
-        FROM gaiadr3_eb.lightcurves
-        WHERE band = 'G' AND flux_error IS NOT NULL AND source_id IN ({ids})
-        GROUP BY source_id""").to_table()
-    n_by_id = {int(r["source_id"]): int(r["n"]) for r in counts}
+        WHERE {FILTERS} ORDER BY source_id""").to_table()
+    n_by_id = count_points(svc, [int(s) for s in cand["source_id"]])
 
     rows = []
     for lo, hi in PERIOD_BINS:
@@ -65,12 +104,8 @@ def main():
             print(f"no star in period bin {lo}-{hi} d")
             continue
         r, n = best
-        rows.append(dict(source_id=int(r["source_id"]),
-                         gaia_frequency=float(r["frequency"]),
-                         gaia_frequency_error=float(r["frequency_error"]),
-                         gmag=float(r["geom_model_reference_level"]),
-                         primary_depth=float(r["derived_primary_ecl_depth"]),
-                         model_type=str(r["model_type"]), n_points=n))
+        rows.append(star_row(r, n, "original4"))
+    rows += sample40(svc, exclude={r["source_id"] for r in rows})
 
     with open(DATA / "stars.csv", "w") as fh:
         keys = list(rows[0])
@@ -80,6 +115,8 @@ def main():
 
     for row in rows:
         sid = row["source_id"]
+        if (DATA / f"lc_{sid}.csv").exists():
+            continue
         lc = svc.run_sync(f"""
             SELECT obs_time, flux, flux_error FROM gaiadr3_eb.lightcurves
             WHERE source_id = {sid} AND band = 'G'
