@@ -33,7 +33,7 @@ def calendar_flags(f, mag=None):
     out = []
     if any(abs(f - k) < 0.02 * k for k in (1, 2, 3)) or abs(f - 1.0027379) < 0.01:
         out.append("daily")
-    moon = [1 / SYN, 1 / SID] + [k + s / SYN for k in (1, 2) for s in (-1, 1)]
+    moon = [1 / SYN, 1 / SID] + [k + s / SYN for k in (1, 2, 1.0027379) for s in (-1, 1)]
     if any(abs(f - m) < 0.003 for m in moon) or any(abs(f - k / SYN) < 0.003 for k in (2, 3)):
         out.append("lunar")
     if f < 3 / YEAR:

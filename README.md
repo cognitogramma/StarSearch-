@@ -71,7 +71,9 @@ catalogue period looks wrong (73 of them "the period is really twice as long", a
 signature). See [`predictions/`](predictions/README.md).
 
 **Discovery scan:** random 30″ patches of the Galactic plane, every ZTF light curve scored for periodicity and
-cross-matched with the catalogue. Candidates and vetting: `results/discovery_candidates.csv`.
+cross-matched with the catalogue. 3,704 stars in 209 patches; 164 strong signals not in
+the catalogue, mostly lunar/daily artefacts; **3 convincing candidates (two eclipsing binaries)** and 5 plausible ones.
+Not yet checked against VSX / Gaia DR3 / ASAS-SN. See [`results/discovery_shortlist.md`](results/discovery_shortlist.md).
 
 ## Reproduce the real-data work
 
