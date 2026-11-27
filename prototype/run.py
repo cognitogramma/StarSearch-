@@ -5,6 +5,8 @@ Models, all fitted to the first two thirds of each light curve:
   new      shrinkage prior a_k, b_k ~ N(0, (sigma_h/k)^2), sigma_h marginalized,
            K in {1, 3, 6} averaged by Bayesian evidence (BMA)
   const    constant flux + jitter (K = 0)          baseline
+Predictions are made twice: from MH draws (the method under test) and from grid
+draws (the exact posterior), so model quality and sampler failures can be told apart.
 All MH runs use the improved sampler (+/- ln 2 and +/- ln 3/2 jumps).
 
 For every model: grid posterior (reference), MH, MH-vs-grid mode check,
@@ -87,6 +89,16 @@ def predict(lc, fit, n, rng):
     return M.predictive_components(t, y, sig, tt, st, d[:, 0], d[:, 1], fit["prior"], rng)
 
 
+def predict_grid(lc, fit, n, rng):
+    """Same predictive, but (P, s) drawn from the grid posterior (exact reference)."""
+    (t, y, sig), (tt, yt, st) = split(lc)
+    g = fit["grid"]
+    idx = rng.choice(g["mass"].size, n, p=g["mass"].ravel())
+    fi, si = np.unravel_index(idx, g["mass"].shape)
+    return M.predictive_components(t, y, sig, tt, st, -np.log(g["freqs"][fi]), g["lns"][si],
+                                   fit["prior"], rng)
+
+
 def baseline(lc, rng):
     (t, y, sig), (tt, yt, st) = split(lc)
     prior = M.Prior.flat(0)
@@ -103,17 +115,21 @@ def fit_star(sid, seed):
     rng = np.random.default_rng(seed)
     fits = {name: fit_model(lc, pr, seed + i) for i, (name, pr) in enumerate(MODELS.items())}
     yt = lc["y"][lc["test"]]
-    preds = {"old": M.score(yt, *predict(lc, fits["old"], N_PRED_DRAWS, rng), rng)}
+    # "<model>" = predictive from MH draws (method under test);
+    # "<model>_grid" = from grid draws (exact posterior, isolates the model from the sampler)
+    preds = {"old": M.score(yt, *predict(lc, fits["old"], N_PRED_DRAWS, rng), rng),
+             "old_grid": M.score(yt, *predict_grid(lc, fits["old"], N_PRED_DRAWS, rng), rng)}
     # Bayesian model average over K: evidence weights, equal prior over K
     logZ = np.array([fits[f"new_K{K}"]["grid"]["log_evidence"] for K in NEW_KS])
     wK = np.exp(logZ - logsumexp(logZ))
     counts = rng.multinomial(N_PRED_DRAWS, wK)
-    mus, vars_ = [], []
-    for K, c in zip(NEW_KS, counts):
-        if c:
-            mu, var = predict(lc, fits[f"new_K{K}"], c, rng)
-            mus.append(mu); vars_.append(var)
-    preds["new"] = M.score(yt, np.vstack(mus), np.vstack(vars_), rng)
+    for key, fn in (("new", predict), ("new_grid", predict_grid)):
+        mus, vars_ = [], []
+        for K, c in zip(NEW_KS, counts):
+            if c:
+                mu, var = fn(lc, fits[f"new_K{K}"], c, rng)
+                mus.append(mu); vars_.append(var)
+        preds[key] = M.score(yt, np.vstack(mus), np.vstack(vars_), rng)
     preds["const"] = baseline(lc, rng)
     return lc, fits, preds, dict(zip(NEW_KS, wK.tolist()))
 
@@ -157,8 +173,8 @@ def report(sid, set_name, lc, fits, preds, wK):
 
 
 def plot_star(sid, lc, fits, preds, gaia_P, best_K, wK):
-    rows = [("old", "old: flat prior, K = 3", "old"),
-            (f"new_K{best_K}", f"new: shrinkage, K = {best_K} (evidence weight {wK[best_K]:.2f})", "new")]
+    rows = [("old", "old: flat prior, K = 3", "old_grid"),
+            (f"new_K{best_K}", f"new: shrinkage, K = {best_K} (evidence weight {wK[best_K]:.2f})", "new_grid")]
     fig = plt.figure(figsize=(13, 9.3), constrained_layout=True)
     gs = fig.add_gridspec(3, 3)
     tr, te = lc["train"], lc["test"]
@@ -213,7 +229,7 @@ def plot_star(sid, lc, fits, preds, gaia_P, best_K, wK):
         ax.plot(ph_te[~inn], lc["y"][te][~inn], "x", ms=6, color=C_GAIA, label="hidden, outside")
         c = preds["const"]
         ax.set(xlabel=f"phase at P = {Pbest:.5g} d", ylabel="G flux / median",
-               title=f"{pkey}: cover {p['cov68']:.0%}/{p['cov95']:.0%}, lpd {p['lpd_per_point']:+.2f} "
+               title=f"{pkey.replace('_grid', '')} (grid draws): cover {p['cov68']:.0%}/{p['cov95']:.0%}, lpd {p['lpd_per_point']:+.2f} "
                      f"(const {c['lpd_per_point']:+.2f})")
         ax.title.set_fontsize(9)
         ax.legend(frameon=False, fontsize=7, loc="lower left")
@@ -229,7 +245,8 @@ def worker(args):
     new_top = out["fits"][f"new_K{out['best_K']}"]["top_alias"]
     print(f"[{i + 1:2d}] {sid} done in {time.time() - t0:.0f}s: best K={out['best_K']}, "
           f"old top={out['fits']['old']['top_alias']} new top={new_top}, "
-          f"cov95 old/new/const = {preds['old']['cov95']:.2f}/{preds['new']['cov95']:.2f}/"
+          f"cov95 old/new/new_grid/const = {preds['old']['cov95']:.2f}/{preds['new']['cov95']:.2f}/"
+          f"{preds['new_grid']['cov95']:.2f}/"
           f"{preds['const']['cov95']:.2f}", flush=True)
     return out
 

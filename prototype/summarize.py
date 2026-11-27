@@ -13,8 +13,10 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 FIGS = HERE / "figs"
-C = {"const": "0.6", "old": "#2b6cb0", "new": "#dd6b20"}
-LABEL = {"const": "constant (K=0)", "old": "old: flat K=3", "new": "new: shrinkage BMA"}
+C = {"const": "0.6", "old": "#2b6cb0", "new": "#dd6b20", "old_grid": "#2b6cb0", "new_grid": "#dd6b20"}
+LABEL = {"const": "constant\n(K=0)", "old": "old, MH", "new": "new, MH",
+         "old_grid": "old, grid", "new_grid": "new, grid"}
+PRED = ("const", "old", "old_grid", "new", "new_grid")
 ALIASES = ["gaia_P", "P/2", "2P", "2P/3", "3P/2", "other"]
 
 
@@ -31,7 +33,7 @@ def main():
             continue
         n_te = np.array([r["n_test"] for r in rs])
         s = dict(n_stars=len(rs), n_hidden_points=int(n_te.sum()))
-        for m in ("const", "old", "new"):
+        for m in PRED:
             c68 = np.array([r["holdout"][m]["cov68"] for r in rs])
             c95 = np.array([r["holdout"][m]["cov95"] for r in rs])
             lpd = np.array([r["holdout"][m]["lpd_per_point"] for r in rs])
@@ -54,6 +56,22 @@ def main():
             s[m]["n_confident_and_gaia_P"] = sum(f["top_alias"] == "gaia_P" for f in confident)
             s[m]["n_confident_and_other"] = sum(f["top_alias"] == "other" for f in confident)
             s[m]["mean_prob_on_gaia_P"] = float(np.mean([f["prob_on_gaia_P_top5"] for f in fits]))
+        # does agreeing with Gaia's period go with better held-out prediction?
+        for grp in ("gaia_P", "P/2", "other"):
+            g_rs = [r for r in rs if period_fit(r, "new")["top_alias"] == grp]
+            if g_rs:
+                d = [r["holdout"]["new_grid"]["lpd_per_point"] - r["holdout"]["const"]["lpd_per_point"]
+                     for r in g_rs]
+                s.setdefault("new_grid_by_top_alias", {})[grp] = dict(
+                    n=len(g_rs), frac_beats_const=float(np.mean(np.array(d) > 0)),
+                    median_dlpd_vs_const=float(np.median(d)),
+                    median_cov95=float(np.median([r["holdout"]["new_grid"]["cov95"] for r in g_rs])))
+        # what fraction of stars would pass the +/-10-point test if perfectly calibrated?
+        sim = np.random.default_rng(0)
+        k68 = sim.binomial(n_te[None, :], 0.68, size=(4000, n_te.size)) / n_te
+        k95 = sim.binomial(n_te[None, :], 0.95, size=(4000, n_te.size)) / n_te
+        s["chance_frac_calibrated_10pt_if_perfect"] = float(
+            ((np.abs(k68 - 0.68) <= 0.1) & (np.abs(k95 - 0.95) <= 0.1)).mean())
         s["best_K_counts"] = dict(Counter(str(r["best_K"]) for r in rs))
         tvs = np.array([f["mh_vs_grid_tv_top5"] for r in rs for f in r["fits"].values()])
         s["mh_vs_grid"] = dict(n_fits=int(tvs.size), median_tv=float(np.median(tvs)),
@@ -70,16 +88,17 @@ def plots(res):
     rs = res
     n = len(rs)
     # coverage per star
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4), constrained_layout=True)
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4), constrained_layout=True)
     rng = np.random.default_rng(0)
     for j, (key, lvl) in enumerate([("cov68", 0.68), ("cov95", 0.95)]):
-        for i, m in enumerate(("const", "old", "new")):
+        for i, m in enumerate(PRED):
             v = np.array([r["holdout"][m][key] for r in rs])
-            ax[j].scatter(i + rng.uniform(-0.18, 0.18, n), v, s=14, color=C[m], alpha=0.7)
+            ax[j].scatter(i + rng.uniform(-0.18, 0.18, n), v, s=14, color=C[m],
+                          alpha=0.35 if m in ("old", "new") else 0.75)
             ax[j].plot([i - 0.3, i + 0.3], [np.median(v)] * 2, color="k", lw=2)
         ax[j].axhspan(lvl - 0.1, lvl + 0.1, color="#38a169", alpha=0.12, lw=0)
         ax[j].axhline(lvl, color="#38a169", ls="--", lw=1)
-        ax[j].set_xticks(range(3), [LABEL[m] for m in ("const", "old", "new")])
+        ax[j].set_xticks(range(len(PRED)), [LABEL[m] for m in PRED], fontsize=8)
         ax[j].set(ylim=(-0.03, 1.03), ylabel="fraction of hidden points inside",
                   title=f"{int(lvl * 100)}% band coverage per star (green = nominal ± 10 pts, bar = median)")
         ax[j].title.set_fontsize(9)
@@ -88,8 +107,8 @@ def plots(res):
 
     # lpd vs constant baseline
     fig, ax = plt.subplots(figsize=(7, 4), constrained_layout=True)
-    d_old = np.array([r["holdout"]["old"]["lpd_per_point"] - r["holdout"]["const"]["lpd_per_point"] for r in rs])
-    d_new = np.array([r["holdout"]["new"]["lpd_per_point"] - r["holdout"]["const"]["lpd_per_point"] for r in rs])
+    d_old = np.array([r["holdout"]["old_grid"]["lpd_per_point"] - r["holdout"]["const"]["lpd_per_point"] for r in rs])
+    d_new = np.array([r["holdout"]["new_grid"]["lpd_per_point"] - r["holdout"]["const"]["lpd_per_point"] for r in rs])
     lim = np.percentile(np.abs(np.r_[d_old, d_new]), 97) * 1.1
     ax.scatter(np.clip(d_old, -lim, lim), np.clip(d_new, -lim, lim), s=18, color=C["new"])
     ax.axhline(0, color="0.5", lw=1); ax.axvline(0, color="0.5", lw=1)
@@ -97,7 +116,7 @@ def plots(res):
     ax.set(xlim=(-lim, lim), ylim=(-lim, lim),
            xlabel="old − constant: held-out lpd per point", ylabel="new − constant: held-out lpd per point",
            title="Held-out log predictive density relative to a constant model\n"
-                 "(right / up = beats constant; above diagonal = new beats old; clipped at edges)")
+                 "(grid draws; right / up = beats constant; above diagonal = new beats old; clipped)")
     ax.title.set_fontsize(9)
     fig.savefig(FIGS / "summary_lpd.png", dpi=130)
     plt.close(fig)
@@ -113,7 +132,7 @@ def plots(res):
             ax.barh(i, k_conf, left=left, color=col, label=a if i == 0 else None)
             ax.barh(i, k_unc, left=left + k_conf, color=col, alpha=0.4, hatch="//")
             left += k_conf + k_unc
-    ax.set_yticks([0, 1], [LABEL["old"], LABEL["new"]])
+    ax.set_yticks([0, 1], ["old: flat K=3", "new: shrinkage, best K"])
     ax.set(xlabel="number of stars",
            title="Top posterior mode vs Gaia's period (solid: top-mode prob > 0.9; hatched: less)")
     ax.title.set_fontsize(9)
