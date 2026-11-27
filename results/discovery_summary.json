@@ -1,0 +1,12 @@
+{
+  "patches_scanned": 130,
+  "stars_scored": 2233,
+  "in_ztf_catalogue": 3,
+  "strong_not_in_catalogue_vetted": 98,
+  "pass_automatic_vetting": 7,
+  "grade_A": 2,
+  "grade_A_oids": [
+    513211100034794,
+    435209100016718
+  ]
+}

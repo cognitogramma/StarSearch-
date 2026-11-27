@@ -6,6 +6,9 @@ Writes results/discovery_candidates.csv and figs/candidates/<oid>.png.
 Vetting flags (a candidate is only interesting if it passes all of them):
   near_known   a catalogued variable within 10" could leak light into this star
   daily        top period is within 2% of 1, 1/2 or 1/3 day (classic ground-based artefact)
+  lunar        period at the Moon's 29.5 d / 27.3 d cycle, or a day beating against it (~1.035 d)
+  annual       period longer than ~4 months (seasonal systematics)
+  faint        fainter than r = 20.5 (photometry near the limit tracks the moonlit sky)
   weak         posterior probability of the top period below 0.9
   rhat         chains disagree (R-hat > 1.1)
 """
@@ -19,6 +22,26 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from starsearch.model import LightCurve
 from starsearch.sampler import analyse
 from starsearch.ztf import clean
+
+SYN, SID, YEAR = 29.530589, 27.321662, 365.25
+
+
+def calendar_flags(f, mag=None):
+    """Periods tied to the calendar rather than the star: days, the Moon, the year,
+    and their beats (k days +- a lunar month). Faint stars get a caution flag because
+    moonlit sky makes their photometry follow the Moon."""
+    out = []
+    if any(abs(f - k) < 0.02 * k for k in (1, 2, 3)) or abs(f - 1.0027379) < 0.01:
+        out.append("daily")
+    moon = [1 / SYN, 1 / SID] + [k + s / SYN for k in (1, 2) for s in (-1, 1)]
+    if any(abs(f - m) < 0.003 for m in moon) or any(abs(f - k / SYN) < 0.003 for k in (2, 3)):
+        out.append("lunar")
+    if f < 3 / YEAR:
+        out.append("annual")
+    if mag is not None and mag > 20.5:
+        out.append("faint")
+    return out
+
 
 rows = {r["oid"]: r for f in glob.glob("results/discovery/cones/*.json") for r in json.load(open(f))}
 cat = pd.read_parquet("data/raw/ztf_cpvs_catalog.parquet", columns=["ID", "ra", "dec", "Type", "Per"])
@@ -37,7 +60,7 @@ for path in sorted(glob.glob("results/discovery/candidates/*.parquet")):
     j = int(np.argmin(sep.values))
     flags = []
     if sep.iloc[j] < 10: flags.append(f"near_known({cat.ID.iloc[j]},{sep.iloc[j]:.1f}\")")
-    if any(abs(P1 - p) / p < 0.02 for p in (1.0, 0.5, 1 / 3, 0.9973)): flags.append("daily")
+    flags += calendar_flags(1 / P1, meta.get("mag"))
     if r["p1"] < 0.9: flags.append("weak")
     if r["rhat"] > 1.1: flags.append("rhat")
     theta, model = lc.best_fit(r["f1"])
@@ -57,5 +80,5 @@ for path in sorted(glob.glob("results/discovery/candidates/*.parquet")):
 
 res = pd.DataFrame(out).sort_values(["flags", "log_bf"], ascending=[True, False])
 res.to_csv("results/discovery_candidates.csv", index=False)
-print(len(res), "candidates;", (res.flags == "clean").sum(), "pass all vetting checks")
+print(len(res), "candidates;", (res["flags"] == "clean").sum(), "pass all vetting checks")
 print(res.head(20).to_string())
