@@ -6,6 +6,7 @@ Each ZTF field/CCD gets its own zero-point (integrated out exactly). More chains
 and steps than the survey, because these results are the published predictions.
 """
 import os, sys, time
+from types import SimpleNamespace
 import multiprocessing as mp
 import numpy as np, pandas as pd
 
@@ -32,7 +33,7 @@ def work(row):
     d = pd.read_parquet(path)
     if len(d) < 30:
         out["status"] = "too_few"; return out
-    grp = (d.field.astype(int) * 100 + d.ccdid.astype(int)).values
+    grp = (d.field.astype(str) + "_" + d.ccdid.astype(str)).values   # ccdid is hex text, e.g. "0x4"
     t, y, e, g = clean(d.mjd.values, d.mag.values, d.magerr.values, grp)
     # drop tiny groups (a handful of points cannot pin down their own offset)
     keep = pd.Series(g).map(pd.Series(g).value_counts()).values >= 10
@@ -70,7 +71,7 @@ def work(row):
 def main():
     lst = pd.read_csv(sys.argv[1]); out = sys.argv[2]
     done = set(pd.read_csv(out).SourceID) if os.path.exists(out) else set()
-    rows = [r for r in lst.itertuples() if r.SourceID not in done]
+    rows = [SimpleNamespace(**r) for r in lst.to_dict("records") if r["SourceID"] not in done]
     print(len(rows), "to do", flush=True)
     buf = []
     with mp.Pool(os.cpu_count()) as pool:
