@@ -31,11 +31,13 @@ fig, ax = plt.subplots(figsize=(10, 4.8))
 cols = {"match": INK, "half": BLUE, "double": "#6da7ec", "alias": ORANGE, "alias2x": YELLOW, "other": "#c3c2b7"}
 left = np.zeros(len(tab))
 for k in tab.columns:
-    ax.barh(tab.index, tab[k], left=left, color=cols[k], label=k, edgecolor="white", linewidth=1)
+    names = {"match": "same period", "half": "2 × period", "double": "½ × period", "alias": "daily alias",
+             "alias2x": "alias of 2× or ½×", "other": "other"}
+    ax.barh(tab.index, tab[k], left=left, color=cols[k], label=names[k], edgecolor="white", linewidth=1)
     left += tab[k].values
 ax.invert_yaxis(); ax.set_xlim(0, 1); ax.set_xlabel("fraction of stars")
 ax.set_title("What the sampler's top period is, relative to the catalogue")
-ax.legend(ncol=6, loc="lower center", bbox_to_anchor=(0.5, -0.32), fontsize=11)
+ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, -0.42), fontsize=11)
 fig.savefig("figs/survey_by_type.png"); plt.close(fig)
 
 # --- 2. calibration: when the posterior says p, is it right p of the time? --

@@ -390,6 +390,88 @@ divider("Experiments", "Two regimes × two proposals, graded against the exact g
 }
 
 // =====================================================================
+// SECTION 5 — Real stars (ZTF survey + blind predictions)
+// =====================================================================
+const SJ = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f))); } catch (e) { return null; } };
+const SV = SJ("results/survey_summary.json");
+const PC = SJ("results/prediction_check.json");
+const aspectOf = (f) => { const b = fs.readFileSync(FIG(f)); return b.readUInt32BE(16) / b.readUInt32BE(20); };
+const k = (n) => Math.round(n).toLocaleString("en-US");
+if (SV) {
+  section("Real stars");
+  divider("Real stars", `${k(SV.n_stars)} ZTF variable stars, sampled one by one`);
+  {
+    const s = content("From two simulated stars to a survey", "Data and method", "Light curves: ZTF Data Release 2 (2018-2019), bundled with the Chen et al. (2020) catalogue of periodic variables. The catalogue period is our reference, not ground truth: it was made with a periodogram, so it can be wrong too. Model upgrades: 3 harmonics (real light curves are not pure sine waves), a proper Gaussian prior on amplitudes (needed for Bayes factors), and a noise scale fitted per star because survey error bars are too small. Sampler upgrade: half random-walk, half 'smart jumps' drawn from periodogram peaks and their aliases, with the Hastings correction because those jumps are not symmetric.");
+    const sp = SV.sampler;
+    stat(s, M, 1.7, 2.8, k(SV.n_stars), "stars sampled with MH");
+    stat(s, M + 3.05, 1.7, 2.8, sp.seconds_per_star_median.toFixed(2) + " s", "median time per star");
+    stat(s, M + 6.1, 1.7, 2.8, sp.rhat_median.toFixed(3), "median R-hat (chains agree)");
+    stat(s, M + 9.15, 1.7, 2.9, pct(sp.mh_vs_quadrature_same_top), "MH and an independent quadrature agree on the top peak");
+    card(s, M, 3.65, 5.9, 2.75, "model card");
+    label(s, M + 0.3, 3.8, 5.3, 0.4, "Model upgrades", { fontSize: 17, bold: true, color: C.text2 });
+    body(s, M + 0.25, 4.25, 5.5, 2.1, ["3 harmonics: real light curves are not sine waves", "Proper prior on amplitudes, so periodic vs constant can be compared", "Noise scale fitted per star: survey error bars are too small"], 15);
+    card(s, 6.83, 3.65, 5.9, 2.75, "sampler card");
+    label(s, 7.13, 3.8, 5.3, 0.4, "Sampler upgrade: smart jumps", { fontSize: 17, bold: true, color: C.text2 });
+    body(s, 7.08, 4.25, 5.5, 2.1, ["Half the moves: local random walk", "Half: jump to a periodogram peak, its harmonics or its daily aliases", "Jumps are not symmetric, so we need the Hastings correction g(f)/g(f′)"], 15);
+  }
+  {
+    const bt = SV.by_type;
+    const s = content("Recovery across eight kinds of variable star", "Result 5", `For pulsating stars the top period matches the catalogue for ${pct(SV.pulsators.exact_match)} of ${k(SV.pulsators.n)} stars; ${pct(SV.pulsators.alias)} land on a daily alias. Eclipsing binaries (EW, EA) mostly come out at HALF the catalogue period: two eclipses per orbit look like one cycle of a wave. That is the expected, well-known ambiguity, and counts as right up to a factor of 2. Spotted stars (BY Dra, RS CVn) are only quasi-periodic, so they are the hardest.\n\nExplain it yourself: why does an eclipsing binary's light curve repeat twice per orbit?`);
+    img(s, "survey_by_type.png", M, 1.5, 7.6, aspectOf("survey_by_type.png"), "Stacked bars: for each star type, the fraction of stars whose top period matches, is half, double, an alias, or other");
+    const pts = [[pct(bt.RR.match), "RR Lyrae match the catalogue"], [pct(bt.CEP.match), "Cepheids match"], [pct(bt.EW.match + bt.EW.double), "contact binaries right up to ×2"]];
+    pts.forEach((p, i) => stat(s, 8.8, 1.6 + i * 1.55, 3.9, p[0], p[1], i === 2 ? C.text2 : C.text2));
+    label(s, 8.8, 6.25, 3.9, 0.6, "Binaries mostly come out at ½ × period: two eclipses per orbit.", { fontSize: 13, italic: true, color: C.accent5 });
+  }
+  {
+    const rv = SV.recovery_vs_N_pulsators;
+    const s = content("Where the boundary is: number of observations", "Result 6", "Each point is a bin of RR Lyrae and Cepheids by number of ZTF DR2 observations. With 20-30 points the match rate is about 83%; it climbs past 95% once stars have 60+ points. The orange line is the average posterior probability of the top peak. Where the orange line sits above the black line, the sampler is more confident than it should be.\n\nExplain it yourself: why would fewer observations create more alias problems?");
+    img(s, "survey_vs_N.png", M, 1.5, 7.9, aspectOf("survey_vs_N.png"), "Match rate and mean posterior confidence versus number of observations");
+    stat(s, 9.0, 1.7, 3.7, pct(rv[0].match_rate), `match rate with ${rv[0].N_bin.replace("[", "").replace(")", "").replace(", ", "–")} points`, C.accent3);
+    stat(s, 9.0, 3.3, 3.7, pct(rv[rv.length - 1].match_rate), `with ${rv[rv.length - 1].N_bin.replace("[", "").replace(")", "").replace(", ", "–")} points`);
+    label(s, 9.0, 4.95, 3.7, 1.5, "This is the 'observing conditions → posterior → chain' thread, measured on real stars.", { fontSize: 14, italic: true, color: C.accent5 });
+  }
+  {
+    const cal = SV.calibration_pulsators;
+    const hi = cal[cal.length - 1], mid = cal.find((c) => c.stated > 0.9 && c.stated < 0.99) || cal[cal.length - 2];
+    const s = content("Is the posterior honest? Not quite", "Result 7", `Calibration: group stars by the posterior probability of the top period, then check how often that period matches the catalogue. A perfectly honest posterior lies on the dashed line. Ours sits below it: when it says ${pct(mid.stated)}, it is right ${pct(mid.actual)} of the time. Likely causes: the model is still simpler than real stars (harmonics, spots, Blazhko modulation), noise is correlated night to night, and some catalogue periods are themselves wrong. An independent group working on Gaia eclipsing binaries found the same overconfidence.\n\nExplain it yourself: why can a perfect MCMC sampler still give an overconfident answer?`);
+    img(s, "survey_calibration.png", M, 1.5, 5.6, aspectOf("survey_calibration.png"), "Calibration plot: stated posterior probability versus fraction matching the catalogue");
+    stat(s, 6.8, 1.7, 2.8, pct(mid.stated), "stated probability", C.text2);
+    stat(s, 9.8, 1.7, 2.9, pct(mid.actual), "actually right", C.accent3);
+    card(s, 6.8, 3.55, 5.9, 2.9, "lesson card");
+    label(s, 7.1, 3.7, 5.3, 0.4, "The lesson", { fontSize: 17, bold: true, color: C.text2 });
+    label(s, 7.1, 4.15, 5.3, 2.2, "MCMC samples the posterior we wrote down. If the model is too simple, the sampler faithfully reports a confidence the data do not support. Sampling error and model error are different things.", { fontSize: 15 });
+  }
+  if (PC) {
+    const nd = PC.new_data_check, dd = nd.where_DR2_posterior_disagreed_with_catalogue;
+    const s = content("Checking DR2 answers against 2019–2025 data", "Result 8", `For ${k(PC.n_predictions)} stars we downloaded the full ZTF light curve to 2025 and re-ran the sampler on ONLY the data taken after DR2 ended (independent of DR2). Where that new data gives a confident period, we use it as the answer key. For stars where our DR2 posterior disagreed with the catalogue (n = ${dd.n}), the new data sided with us ${dd.new_data_sides_with_our_DR2_period == null ? "n/a" : pct(dd.new_data_sides_with_our_DR2_period)} of the time and with the catalogue ${dd.new_data_sides_with_catalogue == null ? "n/a" : pct(dd.new_data_sides_with_catalogue)}.`);
+    img(s, "pred_calibration_newdata.png", M, 1.5, 5.6, aspectOf("pred_calibration_newdata.png"), "Calibration of DR2 posteriors checked against post-2019 ZTF data");
+    stat(s, 6.8, 1.7, 5.9, String(dd.n), "stars where our DR2 period disagreed with the catalogue");
+    stat(s, 6.8, 3.25, 2.8, dd.new_data_sides_with_our_DR2_period == null ? "–" : pct(dd.new_data_sides_with_our_DR2_period), "new data agrees with us", C.text2);
+    stat(s, 9.8, 3.25, 2.9, dd.new_data_sides_with_catalogue == null ? "–" : pct(dd.new_data_sides_with_catalogue), "new data agrees with the catalogue", C.accent3);
+    label(s, 6.8, 4.95, 5.9, 1.4, "Same sampler, two independent stretches of data: an out-of-sample test we could run tonight.", { fontSize: 14, italic: true, color: C.accent5 });
+  }
+  if (PC) {
+    const s = content("Blind predictions for Gaia DR4", "Result 9", `Gaia DR4 is scheduled for 2 December 2026. Before it appeared we committed ${k(PC.n_predictions)} period posteriors to GitHub (file predictions/predictions_v1.csv, SHA-256 ${PC.sha256_predictions_v1.slice(0, 16)}...). Gaia observed in 2014-2019 with a different telescope and cadence, so it is an independent test. When DR4 is out: fit the same model to Gaia's light curves and score how often Gaia's period lands in our top peak, and whether our stated probabilities are calibrated.`);
+    const steps = [["Predict", `${k(PC.n_predictions)} stars, top 3 periods with probabilities`], ["Timestamp", "Committed to GitHub before 2 Dec 2026"], ["Gaia DR4", "Independent light curves, 2014–2019"], ["Score", "Hit rate and calibration of our probabilities"]];
+    steps.forEach((t, i) => {
+      const x = M + i * 3.1;
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.75, w: 2.75, h: 2.2, rectRadius: 0.1, fill: { color: i === 1 ? C.text2 : C.background2 }, line: { color: i === 1 ? C.text2 : C.background2 }, objectName: "step card" });
+      label(s, x + 0.2, 1.9, 2.4, 0.4, `${i + 1}  ${t[0]}`, { fontSize: 17, bold: true, color: i === 1 ? C.accent1 : C.text2 });
+      label(s, x + 0.2, 2.4, 2.4, 1.5, t[1], { fontSize: 14, color: i === 1 ? C.background1 : C.text1 });
+      if (i < 3) arrow(s, x + 2.78, 2.65, 0.3);
+    });
+    const br = PC.by_reason;
+    card(s, M, 4.35, 12.1, 2.1, "prediction sets card");
+    label(s, M + 0.3, 4.5, 11.5, 0.4, "What is in the prediction file", { fontSize: 17, bold: true, color: C.text2 });
+    body(s, M + 0.25, 4.95, 11.6, 1.5, [
+      `${k(br.dr2_disagree || 0)} pulsators where our posterior confidently disagrees with the catalogue period (the headline test)`,
+      `${k((br.g_r_disagree || 0) + (br.dr2_ambiguous || 0))} stars whose period is ambiguous (catalogue g and r bands disagree, or no dominant peak)`,
+      `${k(br.control || 0)} control stars chosen at random`,
+    ], 15);
+  }
+}
+
+// =====================================================================
 // SECTION 5 — Wrap-up
 // =====================================================================
 section("Conclusions");

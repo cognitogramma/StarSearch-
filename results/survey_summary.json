@@ -1,0 +1,184 @@
+{
+  "n_stars": 20382,
+  "by_type": {
+    "RR": {
+      "match": 0.9594,
+      "half": 0.0056,
+      "double": 0.0002,
+      "alias": 0.0245,
+      "alias2x": 0.0003,
+      "other": 0.0101
+    },
+    "RRc": {
+      "match": 0.8834,
+      "half": 0.0665,
+      "double": 0.0,
+      "alias": 0.026,
+      "alias2x": 0.0035,
+      "other": 0.0206
+    },
+    "CEP": {
+      "match": 0.9737,
+      "half": 0.0175,
+      "double": 0.0,
+      "alias": 0.0044,
+      "alias2x": 0.0,
+      "other": 0.0044
+    },
+    "CEPII": {
+      "match": 0.9167,
+      "half": 0.0833,
+      "double": 0.0,
+      "alias": 0.0,
+      "alias2x": 0.0,
+      "other": 0.0
+    },
+    "EW": {
+      "match": 0.2688,
+      "half": 0.0007,
+      "double": 0.7067,
+      "alias": 0.0029,
+      "alias2x": 0.0132,
+      "other": 0.0077
+    },
+    "EA": {
+      "match": 0.2309,
+      "half": 0.0,
+      "double": 0.7557,
+      "alias": 0.0013,
+      "alias2x": 0.009,
+      "other": 0.003
+    },
+    "RSCVN": {
+      "match": 0.6342,
+      "half": 0.2778,
+      "double": 0.0006,
+      "alias": 0.0547,
+      "alias2x": 0.0025,
+      "other": 0.0302
+    },
+    "BYDra": {
+      "match": 0.6856,
+      "half": 0.1541,
+      "double": 0.0011,
+      "alias": 0.0955,
+      "alias2x": 0.0114,
+      "other": 0.0523
+    }
+  },
+  "by_type_n": {
+    "RR": 6625,
+    "EW": 4542,
+    "EA": 2992,
+    "RRc": 2573,
+    "BYDra": 1759,
+    "RSCVN": 1591,
+    "CEP": 228,
+    "CEPII": 72
+  },
+  "calibration_pulsators": [
+    {
+      "stated": 0.3725,
+      "actual": 0.2887,
+      "n": 142
+    },
+    {
+      "stated": 0.5952,
+      "actual": 0.5705,
+      "n": 298
+    },
+    {
+      "stated": 0.7538,
+      "actual": 0.6447,
+      "n": 197
+    },
+    {
+      "stated": 0.8537,
+      "actual": 0.7517,
+      "n": 294
+    },
+    {
+      "stated": 0.9259,
+      "actual": 0.8248,
+      "n": 234
+    },
+    {
+      "stated": 0.9743,
+      "actual": 0.8889,
+      "n": 468
+    },
+    {
+      "stated": 0.9997,
+      "actual": 0.9853,
+      "n": 7865
+    }
+  ],
+  "recovery_vs_N_pulsators": [
+    {
+      "N_bin": "[20, 30)",
+      "n": 230,
+      "match_rate": 0.8261,
+      "mean_p1": 0.8555
+    },
+    {
+      "N_bin": "[30, 40)",
+      "n": 1320,
+      "match_rate": 0.9015,
+      "mean_p1": 0.9189
+    },
+    {
+      "N_bin": "[40, 60)",
+      "n": 2504,
+      "match_rate": 0.9389,
+      "mean_p1": 0.9584
+    },
+    {
+      "N_bin": "[60, 80)",
+      "n": 2087,
+      "match_rate": 0.9631,
+      "mean_p1": 0.9825
+    },
+    {
+      "N_bin": "[80, 120)",
+      "n": 839,
+      "match_rate": 0.9511,
+      "mean_p1": 0.9767
+    },
+    {
+      "N_bin": "[120, 200)",
+      "n": 1256,
+      "match_rate": 0.9506,
+      "mean_p1": 0.9879
+    },
+    {
+      "N_bin": "[200, 400)",
+      "n": 1060,
+      "match_rate": 0.9311,
+      "mean_p1": 0.9847
+    },
+    {
+      "N_bin": "[400, 5000)",
+      "n": 202,
+      "match_rate": 0.9752,
+      "mean_p1": 0.9944
+    }
+  ],
+  "sampler": {
+    "rhat_median": 1.0027418156235997,
+    "rhat_frac_gt_1.1": 0.009910705524482387,
+    "acc_rw_median": 0.29432202767690874,
+    "acc_ind_median": 0.4331211163062114,
+    "mh_vs_quadrature_same_top": 0.971396330095182,
+    "seconds_per_star_median": 0.38743817806243896
+  },
+  "overall": {
+    "exact_match": 0.6399764498086546,
+    "right_up_to_factor2": 0.9544205671671082,
+    "alias": 0.030615248748896085
+  },
+  "pulsators": {
+    "n": 9498,
+    "exact_match": 0.9388292272057275,
+    "alias": 0.025373762897452096
+  }
+}

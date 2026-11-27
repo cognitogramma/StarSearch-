@@ -8,3 +8,4 @@ render/
 
 # large downloaded survey files
 data/raw/
+results/*.log
