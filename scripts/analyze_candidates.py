@@ -46,9 +46,14 @@ def calendar_flags(f, mag=None):
 rows = {r["oid"]: r for f in glob.glob("results/discovery/cones/*.json") for r in json.load(open(f))}
 cat = pd.read_parquet("data/raw/ztf_cpvs_catalog.parquet", columns=["ID", "ra", "dec", "Type", "Per"])
 os.makedirs("figs/candidates", exist_ok=True)
+OUT = "results/discovery_candidates.csv"
+prev = pd.read_csv(OUT) if os.path.exists(OUT) else pd.DataFrame()
+done = set(prev.oid) if len(prev) else set()
 out = []
 for path in sorted(glob.glob("results/discovery/candidates/*.parquet")):
     oid = int(os.path.basename(path).split(".")[0])
+    if oid in done:              # already analysed in an earlier run
+        continue
     meta = rows.get(oid, {})
     d = pd.read_parquet(path)
     t, y, e, g = clean(d.mjd.values, d.mag.values, d.magerr.values, d.oid.values)
@@ -78,7 +83,14 @@ for path in sorted(glob.glob("results/discovery/candidates/*.parquet")):
     ax.spines[["top", "right"]].set_visible(False)
     fig.savefig(f"figs/candidates/{oid}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
-res = pd.DataFrame(out).sort_values(["flags", "log_bf"], ascending=[True, False])
-res.to_csv("results/discovery_candidates.csv", index=False)
+res = pd.concat([prev, pd.DataFrame(out)], ignore_index=True)
+# re-apply the calendar checks to every row (older rows were flagged by an earlier version)
+def _reflag(row):
+    keep = [x for x in str(row["flags"]).split(";") if x.startswith("near_known") or x in ("weak", "rhat")]
+    return ";".join(keep + calendar_flags(1 / row["P1"], row["mag"])) or "clean"
+res["flags"] = res.apply(_reflag, axis=1)
+res = res.sort_values(["flags", "log_bf"], ascending=[True, False])
+res.to_csv(OUT, index=False)
+print(len(out), "newly analysed")
 print(len(res), "candidates;", (res["flags"] == "clean").sum(), "pass all vetting checks")
 print(res.head(20).to_string())
