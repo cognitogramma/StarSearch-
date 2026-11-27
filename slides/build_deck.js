@@ -469,6 +469,14 @@ if (SV) {
       `${k(br.control || 0)} control stars chosen at random`,
     ], 15);
   }
+  if (PC && PC.headline) {
+    const hd = PC.headline;
+    const s = content("Headline claims: binaries in disguise?", "Result 10", `${hd.n} pulsating stars where seven years of ZTF data confidently disagree with the catalogue. ${hd.by_claim.half || 0} of them: the true period looks like exactly TWICE the catalogued one. Folding at the doubled period (right column) shows two cycles of different shape, the signature of an eclipsing binary misfiled as a pulsating star. Some cases are convincing (top row), some rest on subtle differences (bottom row). We said in advance which is which; Gaia DR4 decides. And remember the calibration result: our probabilities are overconfident.`);
+    img(s, "headline_doubled.png", M, 1.45, Math.min(7.0, 5.3 * aspectOf("headline_doubled.png")), aspectOf("headline_doubled.png"), "Four stars folded at the catalogue period (left) and at twice it (right)");
+    stat(s, 7.3, 1.6, 5.4, String(hd.n), "confident disagreements with the catalogue");
+    stat(s, 7.3, 3.1, 5.4, String(hd.by_claim.half || 0), "say: the period is really twice as long", C.accent3);
+    label(s, 7.3, 4.7, 5.4, 1.8, `${(hd.by_claim.alias || 0) + (hd.by_claim.alias2x || 0)} say the catalogue chose a daily alias; ${hd.by_claim.other || 0} give a different period. All committed before Gaia DR4.`, { fontSize: 14, color: C.accent5 });
+  }
 }
 
 // =====================================================================
@@ -481,7 +489,7 @@ section("Conclusions");
   const pts = [["Detailed balance guarantees the destination, not the travel time.", "Every chain we ran had the posterior as its stationary distribution, and two of four still failed in practice."],
     ["Observing conditions shape the posterior.", "Strong, well-sampled data give a needle-thin peak; nightly sampling creates alias peaks at 1 ± f."],
     ["Each shape breaks the random walk differently.", "A needle is hard to find; separated peaks are hard to leave. Both are mixing failures."],
-    ["Global moves fix both, partly.", "Mixing in occasional uniform jumps restored agreement (R-hat ≈ 1), but moves between peaks remain rare."]];
+    ["On 60,000 real stars, the sampler works; the model is the weak link.", "Smart jumps recover 94% of pulsator periods with chains agreeing, but the posterior is overconfident: sampling error is not model error."]];
   pts.forEach((p, i) => {
     const y = 1.8 + i * 1.2;
     s.addShape(pres.shapes.OVAL, { x: M, y: y + 0.05, w: 0.5, h: 0.5, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: "number circle" });
@@ -513,11 +521,11 @@ section("Conclusions");
   ], { x: 8.15, y: 2.45, w: 4.3, h: 3.4, fontFace: "Courier New", fontSize: 14, color: C.text1, valign: "top", isTextBox: true, objectName: "file list" });
 }
 {
-  const s = content("Next steps", "Still to do", "Be explicit with the audience that real-data validation has not been done yet. Candidate data: ZTF or ASAS-SN light curves of RR Lyrae or Cepheid stars with catalogued periods. Ground-based surveys have exactly the nightly sampling of Regime II, so we expect alias peaks in real data too.");
-  const items = [["Real stars", "Validate on RR Lyrae or Cepheid light curves (ZTF, ASAS-SN) with catalogued periods.", "Not yet done", true],
-    ["Smarter jumps", "Propose jumps from the periodogram, or use parallel tempering, so moves between peaks become common.", "Extension", false],
+  const s = content("Next steps", "Still to do", "Real-data validation is done (60,000 ZTF stars). The open items: score the blind predictions against Gaia DR4, fix the overconfidence (richer noise model, or tempering the likelihood), and vet discovery candidates against other catalogues (VSX, Gaia DR3, ASAS-SN).");
+  const items = [["Score the predictions", "When Gaia DR4 is released (2 Dec 2026), fit its light curves and check our committed periods and probabilities.", "After 2 December", true],
+    ["Honest probabilities", "Our posterior is overconfident. Try a richer noise model (night-to-night correlations) or tempering the likelihood, and re-check calibration.", "Next", false],
     ["Map the boundary", "Vary noise, number of nights and span to find where recovery starts to fail.", "Extension", false],
-    ["Discovery (optional)", "Search survey data for variable-star candidates without a catalogued period.", "Optional", false]];
+    ["Discovery candidates", "Vet the scan's periodic stars that are not in the ZTF catalogue against VSX, Gaia and ASAS-SN before claiming anything.", "In progress", false]];
   items.forEach((it, i) => {
     const col = i % 2, rowi = Math.floor(i / 2);
     const x = M + col * 6.15, y = 1.75 + rowi * 2.4;
