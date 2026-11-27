@@ -3,12 +3,19 @@
 **Question.** Do sparse Gaia DR3 G-band light curves of eclipsing binaries give a useful
 period posterior, and do its predictions hold up on held-out data?
 
-**Short answer: partly.** The inference machinery works: the marginalized posterior is
-correct, and MH agrees with the grid in 7 of 8 fits. The *model* is the weak point. A K = 3
-Fourier series found Gaia's period in 2 of 4 stars, and in one star it confidently picked a wrong
-period. The predictive bands are over-confident exactly when the period posterior is
-sharp. Only 1 of the 4 stars was predicted better than a constant-flux model. That points to
-"promising with a better light-curve model", not to "works as specified".
+**Short answer, after two rounds: not yet. It works when the period is identifiable, but it
+doesn't know when the period isn't identifiable.**
+
+* **When the posterior lands on Gaia's period, predictions are good.** That happened for 12 of 40
+  random stars. On 11 of those 12, the held-out light curve is predicted better than by a constant.
+* **For half the sample the posterior lands on a period unrelated to Gaia's,** often with
+  probability ≈ 1. Those predictions are no better than a constant.
+* **Overall, the 68 % / 95 % bands are too narrow.** Pooled coverage of the hidden points is
+  62 % / 84 %, against nominal 68 / 95.
+* **Random-walk MH is not reliable on these posteriors.** Its pooled mode probabilities are within
+  TV 0.1 of the exact grid in only 56 % of fits.
+* **Warning for anyone grading this.** MH-based bands look better calibrated than they are
+  (76 % / 93 %), only because stuck chains smear the draws over wrong modes.
 
 Self-contained: nothing outside `prototype/` is used or modified.
 
@@ -16,128 +23,174 @@ Self-contained: nothing outside `prototype/` is used or modified.
 
 | File | What it does |
 |---|---|
-| `fetch_data.py` | Selects 4 stars by a fixed rule and downloads G-band light curves to `data/` |
-| `model.py` | Fourier model with (m, a_k, b_k) marginalized analytically, priors, grid posterior, MH sampler, predictive |
-| `run.py` | Hold-out split, fits K = 1 and K = 3, compares MH with the grid, scores the predictions, makes the plots and `results.json` |
-| `figs/star_<id>.png` | Per star: light curve · P posterior (MH vs grid) · top-mode probabilities · predictive band vs hidden data |
-| `figs/coverage_summary.png` | 68 % / 95 % coverage for all stars, K = 0 (constant), 1, 3 |
-| `results.json` | All numbers below, plus acceptance rate by move type and runtimes |
+| `fetch_data.py` | Selects stars by a fixed rule and downloads their G-band light curves to `data/` (already committed) |
+| `model.py` | Fourier model with the coefficients marginalized, flat and shrinkage priors, two-stage grid, MH sampler, predictive scoring |
+| `run.py` | Holds out the last third of each star, fits every model, scores the hidden points, writes `results.json` and `figs/stars/<id>.png`. ~40 min on 4 cores |
+| `summarize.py` | Aggregates into `summary.json` and `figs/summary_*.png` (called by `run.py`) |
+| `results_run1.json`, `figs/run1/` | Round 1: 4 stars, K = 1 and 3, flat prior. The round-1 code is at commit `883e94f` |
 
 ```bash
 pip install pyvo numpy scipy matplotlib
-python fetch_data.py    # optional: data/ is already committed
-python run.py           # ~7 min
+python run.py          # all 44 stars; `python run.py 4` = the original four only
 ```
 
 ## Data
 
-* **Source.** On 2026-11-27 the ESA Gaia archive (`gea.esac.esa.int`) returned a "Preparing for
-  Gaia DR4 – temporarily unavailable" page, so the data came from the UPJŠ TAP mirror
+* **Source.** On 2026-11-27 the ESA Gaia archive (`gea.esac.esa.int`) showed "Preparing for
+  Gaia DR4 – temporarily unavailable". The data came from the UPJŠ TAP mirror
   (`https://skvo.science.upjs.sk/tap`, tables `gaiadr3_eb.vari_eclipsing_binary_lite` and
-  `gaiadr3_eb.lightcurves`). The mirror is not the official archive. Sanity checks:
-  * The times span 1690–2704 d (BJD − 2455197.5), which is the DR3 window.
-  * The fluxes match the Gaia G zero point (G ≈ 14.6 → ≈ 28 000 e⁻/s).
-  * The `obs_time` column description on the mirror starts with a stray "converted to mjd ???".
-    The rest of the description, and the values, say BJD − 2455197.5.
-* **Selection.** The filters were:
-  * G reference level 10–15 and frequency 0.05–2 d⁻¹, as specified.
-  * Primary depth 0.1–1.5 mag. Some catalogue rows have "depths" of 20–30 mag, which are
-    geometric-model artefacts.
-  * At least 45 G points with non-null `flux_error`.
+  `gaiadr3_eb.lightcurves`), using G band only with null `flux_error` rows dropped. Sanity checks:
+  * The times span 1690–2704 d (BJD − 2455197.5), the DR3 window.
+  * The fluxes match the Gaia G zero point.
+  * The `obs_time` column description on the mirror starts with a stray "converted to mjd ???",
+    but the rest of the description and the values say BJD − 2455197.5.
 
-  From the stars that passed, I took the one with the most points in each of four period bins
-  (0.5–1.5, 1.5–4, 4–10, 10–20 d). This is the only place Gaia's frequency is touched before
-  the final comparison. `run.py` reads it only in `report()`, after fitting.
-* **Hold-out.** The last third of each star's time span is hidden. That leaves **30–45 points
-  for fitting**, spread over about 600 d.
+  The mirror is third-party: re-download from ESA when it returns.
+* **Filters.** G reference level 10–15 and frequency 0.05–2 d⁻¹, as specified. I also required a
+  primary depth of 0.1–1.5 mag, because some catalogue rows have 20–30 mag "depths" that are model
+  artefacts, and at least 45 usable G points.
+* **Star sets.**
+  * `original4`: round 1, the star with the most points in each period bin.
+  * `sample40`: pseudo-random (`ORDER BY MOD(source_id, 999983)`, which spreads stars over the
+    sky), 10 per period bin (0.5–1.5, 1.5–4, 4–10, 10–20 d). **The headline numbers use only
+    `sample40`**, because the original 4 were picked differently.
+* **Hold-out.** The last third of each time span is hidden. That leaves 20–74 points to fit
+  (median 40) and 822 hidden points in total.
+* **Gaia's frequency is read only after a star's fits are finished.** It is used for star
+  selection and for the final comparison, nowhere else. Gaia's period is a reference, not ground
+  truth: it uses all the data and a different (eclipse-shaped) model.
 
-## Method (as specified)
+## Models
 
-* **Model.** flux/median = m + Σₖ [aₖ sin(2πkt/P) + bₖ cos(2πkt/P)], with noise variance
-  σᵢ² + s². The coefficient priors are m ~ N(1, 1), aₖ, bₖ ~ N(0, 0.5²). The coefficients are
-  marginalized exactly with the Woodbury identity. I checked this against a brute-force
-  multivariate-normal density and they agree to 1e-10.
-* **Priors.** P is log-uniform on [0.5, 20] d. s ~ half-Cauchy(0, 0.05) in relative flux,
-  sampled in ln s with the Jacobian included.
-* **Grid.** Frequency is spaced 1/(30 T), about 35 000 points; ln s has 160 points.
-* **MH.** 24 chains start from the prior and run 40 000 iterations each; the first 10 000 are
-  discarded as burn-in.
-  * Random-walk moves in ln P use a fixed mixture of step sizes (3e-4 … 1.5). A fixed mixture
-    is still symmetric. Alias peaks are only about P/T ≈ 1e-3 wide in ln P, so one step size
-    cannot both stay inside a peak and travel between peaks.
-  * The other 20 % of moves are ±ln 2 jumps.
-* **Predictive.** I take 400 posterior draws of (P, s). For each one I compute the exact
-  Gaussian predictive of every hidden point. I then report the 68 % and 95 % intervals of the
-  mixture, and the log predictive density (lpd).
-* **Baseline.** A constant flux plus jitter (K = 0), for comparison.
+All models: flux/median = m + Σₖ [aₖ sin(2πkt/P) + bₖ cos(2πkt/P)], noise variance σᵢ² + s².
+The coefficients are marginalized exactly. P is log-uniform on [0.5, 20] d; s ~ half-Cauchy(0.05)
+in relative flux.
 
-## Results
+| Name | Coefficient prior | K |
+|---|---|---|
+| `const` | – | 0: a constant plus jitter (baseline) |
+| `old` | aₖ, bₖ ~ N(0, 0.5²): round 1's best model | 3 |
+| `new` | aₖ, bₖ ~ N(0, (σ_h/k)²): higher harmonics must earn their amplitude. σ_h is averaged over {0.01, 0.03, 0.1, 0.3}, exactly, so the posterior is still over (P, s) only | {1, 3, 6}, weighted by Bayesian evidence |
 
-P/P_Gaia is the ratio of the top-mode period to Gaia's period. Coverage is the fraction of
-hidden points inside the 68 % / 95 % bands (nominal: 68 / 95). lpd is per hidden point; higher is
-better.
+**Sampler.** 16 chains start from the prior and run 25 000 iterations each (5 000 discarded as
+burn-in). Moves in ln P are all symmetric:
+* Gaussian random-walk steps from a fixed mixture of sizes (3e-4 … 1.5);
+* ±ln 2 jumps;
+* **new in round 2:** ±ln(3/2) jumps.
 
-| Star (Gaia P) | K | Top modes: P [d] (prob) | P/P_Gaia of top mode | MH vs grid (TV) | Coverage 68/95 | lpd | K=0 coverage, lpd |
-|---|---|---|---|---|---|---|---|
-| 155783931321026432 (0.9956 d) | 1 | 0.631 (.25), 0.500 (.24), 0.504 (.10) | 0.63 | 0.02 | 82 / 89 | +1.19 | 79 / 92, +1.16 |
-|  | 3 | **0.99558 (1.00)** | **1.0000** | **0.33** ✗ | 92 / 95 | **+2.11** | |
-| 156690306860276480 (3.198 d) | 1 | 5.94 (.36), 9.47 (.15), 10.9 (.06) | 1.86 | 0.02 | 97 / 97 | +1.36 | 97 / 97, +1.59 |
-|  | 3 | 18.9 (.20), 1.498 (.16), **3.197 (.14)**, 10.9 (.11) | 5.92 (3rd mode: 1.000) | 0.05 | 97 / 97 | +1.46 | |
-| 156632681281489920 (4.704 d) | 1 | flat: no mode > 0.03 | – | 0.005 | 97 / 97 | +2.02 | 97 / 97, +2.05 |
-|  | 3 | 2.114 (1.00) — wrong | 0.449 | 0.02 | **53 / 62** | +1.82 | |
-| 157041635184768256 (14.21 d) | 1 | 7.112 (1.00) = P/2 | 0.501 | 0.06 | **29 / 61** | −2.91 | 71 / 87, +0.82 |
-|  | 3 | **14.228 (1.00)** | **1.0016** | 0.002 | **32 / 48** | −5.59 | |
+**Reference.** The exact grid posterior. The frequency spacing is 1/(max(30, 6K)·T), which
+resolves every alias peak. The grid works in two stages: every frequency is evaluated on a coarse
+ln s grid, then the full ln s grid is evaluated only where the posterior is within e⁻³⁰ of the
+peak.
 
-### What this shows
+**Scoring.** Each model predicts the hidden points twice:
+* from MH draws, the method under test;
+* from grid draws, the exact posterior.
 
-1. **K = 1 cannot find the period of an eclipsing binary.** Two similar eclipses per orbit put
-   most of the power at P/2. The 14.2 d star shows this cleanly: the posterior is confidently
-   P/2 = 7.11 d. K = 3 is the minimum worth trying.
-2. **K = 3 found Gaia's period in 2 of 4 stars** (0.9956 d and 14.23 d), each with posterior
-   probability ≈ 1. For the 3.2 d star, Gaia's period is only the third mode, with p = 0.14, and the
-   posterior is honestly multimodal. The 4.7 d star is the real failure: a detached binary with a
-   **single** in-eclipse point among its 30 fitting points. K = 3 bends the curve through that
-   one point and gives p = 0.996 to a wrong 2.11 d period.
-3. **The sampler mostly works.** Pooled over chains, MH mode probabilities match the grid to
-   TV ≤ 0.06 in 7 of 8 fits. That includes the very multimodal ones, where no single chain settles
-   (that's why "chains in top mode" in `results.json` is 0 or 2 of 24 there). The failure is
-   0.9956 d at K = 3. There, 8 of 24 chains got stuck on a 1.5 P alias that has zero mass on the
-   grid, so MH reports it at 0.32. ±ln 2 jumps connect P and 2P but not P and 3P/2, and the
-   alias holds them because a K = 3 Fourier series at 1.5 P contains harmonics that line up with
-   the true period. Better moves (e.g. jumps by ln 3/2, or the grid as an independence proposal)
-   would fix this. A single chain without the grid would have silently given a wrong answer
-   here.
-4. **Hold-out predictions are not trustworthy yet.**
-   * Where the period posterior is broad, the bands cover the hidden points: 97 %. That is only
-     because they collapse to "roughly constant", and they never beat the constant baseline.
-   * Where the posterior is sharp, the bands are over-confident: 53/62 % and 32/48 % coverage
-     against 68/95 % nominal, and an lpd worse than the constant model.
-   * Two separate causes:
-     * a confidently wrong period (the 4.7 d star);
-     * a nearly right period extrapolated too far. The 14.2 d star's period is off by 0.16 %,
-       which drifts 0.03–0.07 cycle across the hidden span, several % of flux on the steep
-       parts of the curve. The band is too narrow because the
-       inferred jitter s ≈ 0.3 % is tuned to the in-sample fit.
-   * Only the 0.9956 d star at K = 3 is a real predictive win: lpd +2.11 vs +1.16.
+This separates model problems from sampler problems.
 
-### Verdict
+## Round 2 results (`sample40`: 40 stars, 822 hidden points)
 
-As specified, the approach is **not yet good enough for held-out prediction**. It **is
-promising** as a period-posterior tool if two things change:
+### Held-out predictions
 
-* **A model that can represent eclipses.** This could be Gaussian dips like Gaia's own geometric
-  model, or K chosen by the Bayesian evidence. The grid already computes the evidence
-  (`log_evidence`), so comparing K = 1…6 is a few lines of code.
-* **Robust or extra noise terms**, e.g. Student-t residuals or a per-star model-error term.
+| | const | old, grid | **new, grid** | old, MH | new, MH |
+|---|---|---|---|---|---|
+| Pooled coverage, 68 % band (nominal 68) | 84 % | 67 % | **62 %** | 76 % | 76 % |
+| Pooled coverage, 95 % band (nominal 95) | 93 % | 87 % | **84 %** | 93 % | 93 % |
+| Stars with 95 % coverage < 85 % | 15 % | 33 % | **35 %** | 13 % | 13 % |
+| Stars within ±10 points of nominal on both bands* | 3 % | 15 % | **23 %** | 23 % | 23 % |
+| Stars where the model beats const on held-out log density | – | 58 % | **68 %** | 70 % | 88 % |
+| Median held-out log density per point, minus const | – | +0.19 | **+0.50** | +0.25 | +0.76 |
 
-On sampling, MH is fine as a teaching example only if it is checked against the grid. For
-1–2 parameters the grid is cheap (13–48 s per fit, vs 9–15 s for MH) and is the more reliable reference.
+\* With only about 20 hidden points per star, even a perfectly calibrated model would pass this
+test on just 63 % of stars (binomial noise; computed in `summarize.py`).
+
+Read the **grid** columns as the model's real behaviour. The MH columns look better only because
+of sampling failure:
+* In fits where MH matches the grid (TV < 0.1), MH and grid 95 % coverage differ by 1–4 points.
+* In fits where it doesn't match, MH coverage is 8–10 points higher.
+* Stuck chains spread the predictive draws over several wrong modes, and that widens the bands.
+
+### Period vs Gaia (top posterior mode)
+
+| | Top mode = Gaia P (±1 %) | P/2 | Other aliases (2P, 2P/3, 3P/2) | Unrelated | Prob ≥ 0.9 on an unrelated period | Mean posterior prob on Gaia P |
+|---|---|---|---|---|---|---|
+| old | 10 | 7 | 1 | 22 | 11 | 0.24 |
+| **new** | **12** | 8 | 0 | **20** | **9** | **0.30** |
+
+Disagreeing with Gaia goes with bad predictions. That suggests our period is the wrong one, not
+Gaia's. New model, grid draws:
+
+| Top mode is… | Stars | Beats const | Median log density vs const | Median 95 % coverage |
+|---|---|---|---|---|
+| Gaia's P | 12 | 11 / 12 | +1.26 | 90 % |
+| P/2 | 8 | 6 / 8 | +0.78 | 89 % |
+| Unrelated | 20 | 10 / 20 | +0.00 | 87 % |
+
+The evidence prefers K = 6 for 36 / 40 stars and K = 3 for the other 4; K = 1 never wins.
+
+### Sampler
+
+* Across all 160 fits, MH and grid mode probabilities agree within TV 0.1 in only **56 %** of
+  fits. Median TV is 0.075, maximum 0.91.
+* Worst case, star 2205071261005286656: 13 of 16 chains end 6–12 nats below the global mode
+  (0.883 d), on 2.18 d and 13.86 d. Those ratios are not 2 or 3/2, so no jump in the move set
+  connects them.
+* The ±ln(3/2) jump fixed the specific round-1 failure it targeted (a 3/2 alias). It cannot fix
+  aliases at arbitrary period ratios.
+* MH does worse here than in round 1 for two reasons:
+  * chains are shorter (16 × 25 k vs 24 × 40 k);
+  * K = 6 peaks are narrower than K = 3 peaks, roughly P/(K·T) in ln P, i.e. below the smallest
+    step for short periods.
+
+## Verdict and what to try next
+
+**The shrinkage prior helped, but not enough.** It raised the share of stars predicted better
+than a constant from 58 % to 68 %, and the median gain from +0.19 to +0.50. It also moved a few
+more top modes onto Gaia's period. It did **not** fix calibration: the exact-posterior bands
+still miss too many hidden points.
+
+The cause is clear from the tables: the posterior often puts probability ≈ 1 on a spurious period.
+The model has no way to say "the data cannot tell". With 30–40 points, a single Gaussian jitter
+and a Fourier basis, an unlucky period that threads a curve through one or two eclipse points
+beats every other explanation by many nats.
+
+**Remaining steps, in order:**
+
+1. **Fix the sampler before using MH at all.**
+   * In 2-D the grid is cheap (3–150 s per fit, median 26 s) and exact, so use it as the
+     reference. Or let MH occasionally propose a new period drawn from a global distribution
+     (e.g. a coarse periodogram computed from the data alone), with the Hastings correction.
+     Or use parallel tempering.
+   * For a student project, "MH vs grid disagree, and here is why" is itself a good result.
+2. **Robust noise** (Student-t, or a small outlier-mixture term). This targets the
+   spurious-period failures directly: one deep point stops being decisive. The coefficients are no
+   longer analytically marginal, but it can be done with a latent-scale Gibbs step, or by
+   averaging over a few s values per point.
+3. **Allow K > 6.** The evidence picked the largest K offered almost every time. With the
+   shrinkage prior, trying K = 10 is safe.
+4. **Eclipse-shaped model** (Gaussian dips plus an ellipsoidal cosine, like Gaia's geometric
+   model). The most work, and the most likely to fix detached binaries.
+5. **More data per star.** Gaia DR4 roughly doubles the number of epochs. Many current failures
+   (the 4.7 d star has one in-eclipse point among its 30 fitting points) are information limits,
+   not modelling errors. For those, the realistic goal is wide bands, not the right period.
+
+## Round 1 summary (4 stars, flat prior; `results_run1.json`, `figs/run1/`)
+
+* K = 1 cannot recover an eclipsing binary's period: it finds P/2 or noise.
+* K = 3 matched Gaia for 2 of the 4 stars.
+* MH matched the grid in 7 of 8 fits. The failure was a 3/2 alias trap, which motivated the
+  ±ln(3/2) jumps.
+* Bands were over-confident whenever the posterior was sharp. Only 1 of 4 stars was predicted
+  better than a constant.
 
 ## Caveats
 
-* Four stars, one random split each. These are feasibility numbers, not a population study.
-* The MH-vs-grid **histogram** panel uses 600 bins in ln P, which is coarser than the alias
-  peaks. It shows where the mass is, but the quantitative check is the mode-probability bar chart
-  and the TV distance.
-* Data come from a third-party mirror while the ESA archive is down. When the official archive
-  returns, re-download the light curves to confirm they match.
+* One time-ordered split per star. The last-third hold-out tests extrapolation, which is harder
+  than predicting between observations (interpolation).
+* Gaia's period is not ground truth.
+* A few stars have catastrophic held-out log densities (about −25 per point, on confident wrong
+  periods), so medians are reported rather than means. See `figs/summary_lpd.png`.
+* `figs/summary_periods.png` covers all 44 stars; the tables above cover the 40-star sample.
+* The MH-vs-grid histogram panels in the per-star figures use bins coarser than the alias peaks.
+  The quantitative check is the mode-probability bars and the TV distance.
