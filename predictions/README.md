@@ -44,3 +44,28 @@ ZTF. After DR4:
 | `fetch_list_*.csv` | Which stars were chosen, and why (`reason`) |
 | `predictions_*.csv` | The predictions |
 | `SHA256SUMS` | Hashes of the prediction files at the time they were committed |
+
+## Version 1 (committed 2026-11-27T11:28:33+00:00)
+
+* **3,085 stars** in `predictions_v1.csv` (SHA-256 `50ccbe8c3f8c489000180a262623d23870292b404297adb75fc16b2a60a4152b`).
+* **106 headline predictions** in `headline_v1.csv` (SHA-256 `aec1acaa867eabb51263ec075e917089e36e7d473cdb5b1de386e7102aa2e35c`): pulsating stars
+  where 2018–2025 ZTF data give a confident period that disagrees with the catalogue
+  (73 "true period is twice the catalogue's", 22 "catalogue period is a daily alias",
+  11 "different period"). A further 31 stars only refine the catalogue period
+  and are not counted as disagreements.
+* Code version: commit `9ef08027df0e`.
+
+### Read these probabilities with care
+
+We already know our posteriors are **overconfident**:
+
+* In the 60,000-star DR2 survey, a stated 97 % was right about 88 % of the time.
+* Checked against ZTF data taken *after* DR2, a stated 96 % was right only 78% of the time
+  (stars chosen because their period was already disputed, so a hard set).
+* Where our DR2 posterior confidently disagreed with the catalogue (142 stars), later data sided with the
+  catalogue 69% of the time and with us only 28%.
+
+So a listed `p1` of 1.00 should be read as "strong evidence under our model", not certainty. Some
+"twice the period" claims look convincing when folded (two unequal humps; see `figs/headline_doubled.png`),
+others rest on subtle differences between alternate cycles. Gaia DR4 is the test of which is which,
+and of how overconfident the posterior really is.

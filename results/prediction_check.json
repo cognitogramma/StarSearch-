@@ -1,14 +1,16 @@
 {
-  "made_utc": "2026-11-27T11:01:20+00:00",
-  "git_commit_of_code": "1f6f7a320e12f13dd0a0c13df9e59233f80a7f79",
-  "n_predictions": 1556,
-  "sha256_predictions_v1": "72bae8c9188f340e7ac109ed6ae644d017bc291fe277ab36c8107213299c0303",
+  "made_utc": "2026-11-27T11:28:33+00:00",
+  "git_commit_of_code": "9ef08027df0e2aecd7416b7b44989cf9125f54d5",
+  "n_predictions": 3085,
+  "sha256_predictions_v1": "50ccbe8c3f8c489000180a262623d23870292b404297adb75fc16b2a60a4152b",
   "by_reason": {
+    "dr2_ambiguous": 1382,
     "g_r_disagree": 1157,
-    "control": 399
+    "control": 399,
+    "dr2_disagree": 147
   },
   "new_data_check": {
-    "n_stars_with_confident_new_period": 900,
+    "n_stars_with_confident_new_period": 2212,
     "calibration_unbiased_subset": [
       {
         "stated": 0.373,
@@ -37,9 +39,20 @@
       }
     ],
     "where_DR2_posterior_disagreed_with_catalogue": {
-      "n": 0,
-      "new_data_sides_with_our_DR2_period": null,
-      "new_data_sides_with_catalogue": null
+      "n": 142,
+      "new_data_sides_with_our_DR2_period": 0.28169014084507044,
+      "new_data_sides_with_catalogue": 0.6901408450704225
     }
+  },
+  "headline": {
+    "n": 106,
+    "by_claim": {
+      "half": 73,
+      "alias": 20,
+      "other": 11,
+      "alias2x": 2
+    },
+    "n_refined_not_disagreeing": 31,
+    "sha256_headline_v1": "aec1acaa867eabb51263ec075e917089e36e7d473cdb5b1de386e7102aa2e35c"
   }
 }

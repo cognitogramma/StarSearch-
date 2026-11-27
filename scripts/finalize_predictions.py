@@ -73,3 +73,28 @@ if len(cal):
     ax.set_xlabel("DR2 posterior probability of top period"); ax.set_ylabel("fraction confirmed by later ZTF data")
     ax.set_title("Out-of-sample check (2019–2025 data)")
     fig.savefig("figs/pred_calibration_newdata.png"); plt.close(fig)
+
+# ---- 3. headline predictions: confident disagreements with the catalogue ----
+# Compare at the catalogue's own precision (DR2 baseline ~450 d): smaller differences
+# are refinements of the catalogue period, not disagreements.
+T_CAT = 450.0
+p = pub.copy()
+p["rel_cat_dr2prec"] = [relation(1 / a, 1 / b, T_CAT, tol_cycles=1.5) for a, b in zip(p.P1, p.Per_cat)]
+p.loc[(p.rel_cat != "match") & (p.rel_cat_dr2prec == "match"), "rel_cat_dr2prec"] = "refined"
+head = p[p.Type.isin(["RR", "RRc", "CEP", "CEPII"]) & (p.p1 >= 0.95) &
+         p.rel_cat_dr2prec.isin(["half", "double", "alias", "alias2x", "other"])].copy()
+claim = {"half": "true period is 2x catalogue (binary misfiled as pulsator?)",
+         "double": "true period is 1/2 catalogue",
+         "alias": "catalogue period is a daily alias", "alias2x": "catalogue period is an alias of 2P or P/2",
+         "other": "different period"}
+head["prediction"] = head.rel_cat_dr2prec.map(claim)
+head = head.sort_values(["rel_cat_dr2prec", "p1"], ascending=[True, False])
+head[["ID", "ra", "dec", "Type", "Per_cat", "P1", "p1", "P1_sd", "P2", "p2", "prediction", "N", "T"]].to_csv(
+    "predictions/headline_v1.csv", index=False, float_format="%.7g")
+h2 = hashlib.sha256(open("predictions/headline_v1.csv", "rb").read()).hexdigest()
+open("predictions/SHA256SUMS", "a").write(f"{h2}  headline_v1.csv\n")
+S["headline"] = {"n": int(len(head)), "by_claim": head.rel_cat_dr2prec.value_counts().to_dict(),
+                 "n_refined_not_disagreeing": int((p.rel_cat_dr2prec == "refined").sum()),
+                 "sha256_headline_v1": h2}
+json.dump(S, open("results/prediction_check.json", "w"), indent=2)
+print("headline:", json.dumps(S["headline"]))
