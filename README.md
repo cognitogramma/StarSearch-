@@ -73,7 +73,14 @@ signature). See [`predictions/`](predictions/README.md).
 **Discovery scan:** random 30″ patches of the Galactic plane, every ZTF light curve scored for periodicity and
 cross-matched with the catalogue. 3,704 stars in 209 patches; 164 strong signals not in
 the catalogue, mostly lunar/daily artefacts; **3 convincing candidates (two eclipsing binaries)** and 5 plausible ones.
-Catalogue check: 2 are known eclipsing binaries (our periods match theirs up to the factor 2); **ZTF 435209100016718 is in no variable-star catalogue checked** (blend with a 2.6" neighbour still to rule out). See [`results/discovery_shortlist.md`](results/discovery_shortlist.md).
+**Bulk scan (552,440 stars, 3 ZTF DR24 Galactic-plane files):** 19 convincing periodic stars after the sampler,
+cross-match, neighbour-light check, split-half repeatability test and a look by eye. 9 turned out to be known (Gaia DR2/DR3
+variability lists, Pan-STARRS, and OGLE's November 2026 bulge eclipsing-binary release). For the 7 shared with OGLE our
+period matches OGLE's exactly (or is half of it, the usual eclipsing-binary factor). **10 remain in no catalogue checked**
+(VSX, Gaia DR2/DR3, ATLAS, Pan-STARRS, OGLE, SIMBAD, all VizieR); all lie in OGLE field BLG736, sparsely covered by OGLE.
+See `results/bulk_final_candidates.csv` (status = NEW CANDIDATE).
+
+First scan: catalogue check: 2 are known eclipsing binaries (our periods match theirs up to the factor 2); **ZTF 435209100016718 is in no variable-star catalogue checked** (blend with a 2.6" neighbour still to rule out). See [`results/discovery_shortlist.md`](results/discovery_shortlist.md).
 
 ## Reproduce the real-data work
 
