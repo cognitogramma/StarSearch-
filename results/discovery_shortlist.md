@@ -44,3 +44,24 @@ Only then report it to VSX as a new eclipsing-binary candidate.
 | C | 806212300091839 | 23:59:33.37 +62:20:46.48 | 17.3 | 1944 | 2.43156 | 0.96 | 0.12 | Isolated spikes, not periodic. |
 
 Folded light curves: `figs/candidates/<oid>.png`.
+
+## Catalogue check of all 164 strong signals (28 Nov 2026)
+
+`scripts/crossmatch_all.py` -> `results/discovery_crossmatch.csv`. Only 8 of 164 have any variable-star catalogue
+entry within 10"; 4 are the same star (within 0.1"), 4 are neighbours 8-10" away.
+
+* Same star, already known: 513211100034794 (EB, A), 283212300076884 (EB, A), 385216400037057 (ASAS-SN semi-regular,
+  P = 20.383 d vs our 20.389 d; we had graded it C), 331205200096070 (Gaia rotational variable; we had graded it C).
+  So two of our grade-C rejections were real variables: grading by eye is conservative, not infallible.
+* All five grade-B candidates are in none of the catalogues.
+
+### Light from neighbours (Gaia DR3 within 4", `results/discovery_uncatalogued_blends.csv`)
+
+| ZTF oid | Gaia DR3 | G | Neighbour light | Signal depth | Verdict |
+|---|---|---|---|---|---|
+| 435209100016718 | 4260185826207859712 | 17.8 | 9% (G 20.3 at 2.6") | 0.15 mag = 13% | **Best candidate.** The neighbour supplies too little light to fake a 13% dip even if fully eclipsed. |
+| 769205100031199 | 1974651247739555456 | 16.3 | none | 0.035 mag | Isolated, bright, low amplitude. Good second candidate. |
+| 383215400003964 | 4160581347024943104 | 20.0 | none | 0.34 mag | Isolated but faint. |
+| 334204400032332 | 4080142240293898880 | 19.2 | 17% | 0.14 mag | A neighbour could cause it. Ambiguous. |
+| 331205200047715 | 4123306558511115904 | 16.4 | 12% | 0.04 mag | A neighbour could easily cause it. Ambiguous. |
+| 436215400183802 | 4266222011922869248 | 19.4 | 72% | 0.22 mag | Mostly neighbours' light. Probably a blend. |
