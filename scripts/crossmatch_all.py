@@ -6,9 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 
 MIRROR = "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?"
-CATS = {"vsx": "B/vsx/vsx", "gaia_dr3_var": "I/358/vclassre", "asassn": "II/366/catalog",
+CATS = {"vsx": "B/vsx/vsx", "gaia_dr3_var": "I/358/vclassre", "asassn": "II/366/catv2021",
         "atlas": "J/AJ/156/241/table4", "ztf_cpvs": "J/ApJS/249/18/table2"}
-NAME_COL = {"vsx": ["Name", "Type", "Period"], "gaia_dr3_var": ["Source", "Class"], "asassn": ["ID", "Type", "Per"],
+NAME_COL = {"vsx": ["Name", "Type", "Period"], "gaia_dr3_var": ["Source", "Class"], "asassn": ["ASASSN-V", "Type", "Per"],
             "atlas": ["ATOID", "Class", "fp-LSper"], "ztf_cpvs": ["ID", "Type", "Per"]}
 
 

@@ -26,7 +26,7 @@ PRI_LOG_BF, PRI_MAG = 50, 19.5
 MH_OUT, XM_OUT, SHORT = "results/bulk_candidates_mh.csv", "results/bulk_candidates_xmatch.csv", "results/bulk_shortlist.csv"
 MIRROR = "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?"
 CATS = {"vsx": ("B/vsx/vsx", ["Name", "Type", "Period"]), "gaia_dr3_var": ("I/358/vclassre", ["Source", "Class"]),
-        "asassn": ("II/366/catalog", ["ID", "Type", "Per"]), "atlas": ("J/AJ/156/241/table4", ["ATOID", "Class"])}
+        "asassn": ("II/366/catv2021", ["ASASSN-V", "Type", "Per"]), "atlas": ("J/AJ/156/241/table4", ["ATOID", "Class"])}
 
 
 def calendar_flags(f, mag):
