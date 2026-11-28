@@ -9,3 +9,5 @@ render/
 # large downloaded survey files
 data/raw/
 results/*.log
+results/bulk/candidates/
+results/bulk_scan_*.log
