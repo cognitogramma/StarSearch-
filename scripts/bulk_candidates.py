@@ -22,6 +22,7 @@ from starsearch.model import LightCurve
 from starsearch.sampler import analyse
 
 SYN, SID, YEAR = 29.530589, 27.321662, 365.25
+PRI_LOG_BF, PRI_MAG = 50, 19.5
 MH_OUT, XM_OUT, SHORT = "results/bulk_candidates_mh.csv", "results/bulk_candidates_xmatch.csv", "results/bulk_shortlist.csv"
 MIRROR = "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?"
 CATS = {"vsx": ("B/vsx/vsx", ["Name", "Type", "Period"]), "gaia_dr3_var": ("I/358/vclassre", ["Source", "Class"]),
@@ -86,7 +87,11 @@ def strict_selection():
 
 def stage_mh(deadline):
     done = set(pd.read_csv(MH_OUT).oid) if os.path.exists(MH_OUT) else set()
-    _, sel = strict_selection()
+    d, sel = strict_selection()
+    # priority tier (the run of 28 Nov 2026): strongest signals in stars brighter than r = 19.5
+    pri = d[d.oid.isin(sel) & (d.log_bf > PRI_LOG_BF) & (d.mag < PRI_MAG)]
+    sel = set(pri.oid)
+    print(f"strict screen: {len(d[d.oid.isin(set(d.oid))])} scored; priority tier: {len(sel)}", flush=True)
     paths = [p for p in sorted(glob.glob("results/bulk/candidates/*.npz"))
              if int(os.path.basename(p)[:-4]) in sel and int(os.path.basename(p)[:-4]) not in done]
     print(len(done), "done,", len(paths), "to go", flush=True)
