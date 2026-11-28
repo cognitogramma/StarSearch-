@@ -10,5 +10,20 @@
     513211100034794,
     435209100016718,
     283212300076884
-  ]
+  ],
+  "crossmatch_date": "2026-11-28",
+  "crossmatch_catalogues": [
+    "VSX (VizieR B/vsx)",
+    "Gaia DR3 variability (I/358)",
+    "ASAS-SN variables (II/366)",
+    "ATLAS variables (J/AJ/156/241)",
+    "ZTF CPVS (J/ApJS/249/18)"
+  ],
+  "grade_A_known": {
+    "513211100034794": "VSX: Gaia DR3 3355331737011727360, EB, P = 0.444826 d (our 2P = 0.44482 d)",
+    "283212300076884": "VSX: Gaia DR3 4077410095627367552, EB, P = 0.382611 d (our 2P = 0.38262 d)"
+  },
+  "grade_A_uncatalogued": {
+    "435209100016718": "Gaia DR3 4260185826207859712, G = 17.8, plx 0.42 +- 0.11 mas, l = 31.02 b = +1.23; no variable-catalogue match within 10\"; G = 20.3 neighbour at 2.6\" (blend risk)"
+  }
 }

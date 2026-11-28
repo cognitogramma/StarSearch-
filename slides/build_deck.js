@@ -479,15 +479,15 @@ if (SV) {
   }
   const DS = SJ("results/discovery_summary.json");
   if (DS) {
-    const s = content("Looking for stars nobody has catalogued", "Result 11", `Discovery scan: random 30-arcsecond patches of the Milky Way's plane. Every ZTF light curve with 100+ points was scored for periodicity (Bayes factor, periodic vs constant) and cross-matched with the ZTF catalogue. Most strong signals not in the catalogue are fakes: the Moon's 29.5-day cycle, or a day beating against it (1.035 d), in faint stars whose photometry follows the moonlit sky. After vetting and a look by eye, ${DS.grade_A} stand out (two shown: both eclipsing binaries) and ${DS.grade_B || 0} more are plausible. They are NOT yet confirmed as new: VSX, Gaia DR3, ASAS-SN and ATLAS still need checking (unreachable from this session).`);
+    const s = content("Looking for stars nobody has catalogued", "Result 11", `Discovery scan: random 30-arcsecond patches of the Milky Way's plane. Every ZTF light curve with 100+ points was scored for periodicity (Bayes factor, periodic vs constant) and cross-matched with the ZTF catalogue. Most strong signals not in the catalogue are fakes: the Moon's 29.5-day cycle, or a day beating against it (1.035 d), in faint stars whose photometry follows the moonlit sky. After vetting and a look by eye, ${DS.grade_A} stand out (two shown: both eclipsing binaries) and ${DS.grade_B || 0} more are plausible. Checked against VSX, Gaia DR3, ASAS-SN and ATLAS: two are known eclipsing binaries whose catalogued periods are exactly twice ours (an independent confirmation); one, ZTF 435209100016718, is in none of them. Caveat: a fainter star 2.6 arcsec away could be the one eclipsing.`);
     const funnel = [[k(DS.stars_scored), "stars scored"], [String(DS.strong_not_in_catalogue_vetted), "strong signals not in the catalogue"], [String(DS.pass_automatic_vetting), "pass automatic vetting"], [String(DS.grade_A), "convincing by eye"]];
     funnel.forEach((f, i) => stat(s, M, 1.55 + i * 1.3, 2.9, f[0], f[1], i === 3 ? C.accent3 : C.text2));
     const a1 = `candidates/${DS.grade_A_oids[0]}.png`, a2 = `candidates/${DS.grade_A_oids[1]}.png`;
     img(s, a1, 3.8, 1.5, 8.9 / 2 - 0.1, aspectOf(a1), "Folded light curve of candidate 1: deep eclipses every 0.2224 days");
     img(s, a2, 3.8 + 8.9 / 2 + 0.05, 1.5, 8.9 / 2 - 0.1, aspectOf(a2), "Folded light curve of candidate 2: sharp eclipse every 2.416 days");
     card(s, 3.8, 4.3, 8.9, 2.1, "caveat card");
-    label(s, 4.1, 4.45, 8.3, 0.4, "Before anyone calls these new", { fontSize: 17, bold: true, color: C.text2 });
-    body(s, 4.05, 4.9, 8.4, 1.5, ["Check VSX, Gaia DR3, ASAS-SN and ATLAS at these positions", "Confirm the orbital period (P or 2P) from the secondary eclipse", "Then report to VSX as candidates, with the light curves"], 15);
+    label(s, 4.1, 4.45, 8.3, 0.4, "Catalogue check: 2 known, 1 uncatalogued", { fontSize: 17, bold: true, color: C.text2 });
+    body(s, 4.05, 4.9, 8.4, 1.5, ["Left: known (VSX P = 0.4448 d, exactly 2 × ours). Right: ZTF 435209100016718, in no variable catalogue", "Rule out the G = 20.3 neighbour 2.6\u2033 away; find the secondary eclipse (P or 2P)", "Then report it to VSX as a new eclipsing-binary candidate"], 15);
 
   }
 }

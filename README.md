@@ -73,7 +73,7 @@ signature). See [`predictions/`](predictions/README.md).
 **Discovery scan:** random 30″ patches of the Galactic plane, every ZTF light curve scored for periodicity and
 cross-matched with the catalogue. 3,704 stars in 209 patches; 164 strong signals not in
 the catalogue, mostly lunar/daily artefacts; **3 convincing candidates (two eclipsing binaries)** and 5 plausible ones.
-Not yet checked against VSX / Gaia DR3 / ASAS-SN. See [`results/discovery_shortlist.md`](results/discovery_shortlist.md).
+Catalogue check: 2 are known eclipsing binaries (our periods match theirs up to the factor 2); **ZTF 435209100016718 is in no variable-star catalogue checked** (blend with a 2.6" neighbour still to rule out). See [`results/discovery_shortlist.md`](results/discovery_shortlist.md).
 
 ## Reproduce the real-data work
 

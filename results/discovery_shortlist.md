@@ -5,9 +5,21 @@ at the 2-hour limit for background jobs, before the planned 300 patches).
 164 stars passed the automatic detection cut; 145 were rejected by vetting (flags overlap: 94 lunar, 84 faint, 64 weak, 15 daily, 9 rhat, 6 annual, 1 near_known).
 The 19 survivors were graded by eye: A = convincing, B = plausible, C = artefact.
 
-**Not yet done: checking VSX, Gaia DR3, ASAS-SN and ATLAS.** Those archives were unreachable from this
-session (and Gaia's is offline until DR4), so none of these can be called new until that is done.
-Check each position at https://www.aavso.org/vsx/ (search radius 10").
+## Catalogue check (28 Nov 2026, grade A)
+
+Checked within 10" against VSX (VizieR's copy, B/vsx), Gaia DR3 variability (I/358), ASAS-SN variables (II/366),
+ATLAS variables (J/AJ/156/241) and the ZTF periodic-variable catalogue, via the Harvard VizieR mirror
+(`scripts/crossmatch_candidates.py`). The live VSX site blocks scripts, so check it by hand too.
+
+| ZTF oid | Result |
+|---|---|
+| 513211100034794 | **Known.** VSX: Gaia DR3 3355331737011727360, eclipsing, P = 0.444826 d. Our predicted orbit 2P = 0.44482 d: an independent match. |
+| 283212300076884 | **Known.** VSX: Gaia DR3 4077410095627367552, eclipsing, P = 0.382611 d. Our 2P = 0.38262 d: an independent match. |
+| 435209100016718 | **Not in any variable-star catalogue checked.** = Gaia DR3 4260185826207859712 (G = 17.8, parallax 0.42 +- 0.11 mas, RUWE 1.02), Galactic l = 31.02, b = +1.23. Listed in a W43 young-star survey's source table (Saral+ 2017) but with an ordinary-star infrared slope (alpha = -2.46), so not a disk-bearing young star. **Caveat:** a G = 20.3 star sits 2.6" away, inside ZTF's blur, and could be the one eclipsing. |
+
+Next steps for 435209100016718: check the live VSX by hand; confirm which star dims (ZTF difference images,
+or Gaia DR4 epoch photometry, which resolves the two); look for a secondary eclipse to fix P = 2.416 d vs 4.831 d.
+Only then report it to VSX as a new eclipsing-binary candidate.
 
 | Grade | ZTF oid | RA, Dec (J2000) | r mag | N | Period (d) | p | Amplitude | Notes |
 |---|---|---|---|---|---|---|---|---|
